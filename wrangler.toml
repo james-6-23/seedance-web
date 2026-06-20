@@ -1,9 +1,12 @@
 name = "seedance-web"
 main = "src/index.js"
-compatibility_date = "2025-06-04"
+compatibility_date = "2026-06-01"
+workers_dev = true
+preview_urls = true
 
 [observability]
 enabled = true
+head_sampling_rate = 1
 
 [assets]
 binding = "assets"        # 静态资源绑定名（worker 内通过 env.assets 访问）
@@ -13,4 +16,4 @@ run_worker_first = true   # worker 先执行，便于拦截 /proxy
 
 # 部署 / 本地 dev 前自动构建前端（Vue3 + Element Plus）
 [build]
-command = "npm --prefix ./frontend install && npm --prefix ./frontend run build"
+command = "npm run build:frontend"

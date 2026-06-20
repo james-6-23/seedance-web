@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build:frontend": "npm --prefix ./frontend ci && npm --prefix ./frontend run build"
   },
   "devDependencies": {
     "wrangler": "^4.90.0"
