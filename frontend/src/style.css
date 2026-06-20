@@ -320,11 +320,26 @@ html.dark {
   color: var(--btn-secondary-hover-color) !important;
 }
 
+/* 分段控件：滑块过渡 */
+.el-segmented {
+  --el-border-radius-base: 10px;
+}
+.el-segmented__item-selected {
+  transition:
+    background-color 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.24s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.el-segmented__item {
+  transition: color 0.2s ease !important;
+}
+
 /* 标签页：渐变高亮条 */
 .el-tabs__active-bar {
   background: var(--neon-gradient) !important;
   height: 3px !important;
   border-radius: 3px;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), width 0.24s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .el-tabs__item.is-active {
   color: var(--el-color-primary) !important;

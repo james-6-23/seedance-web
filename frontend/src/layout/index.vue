@@ -55,10 +55,12 @@
     </header>
 
     <main class="content">
-      <router-view v-slot="{ Component }">
-        <keep-alive>
-          <component :is="Component" />
-        </keep-alive>
+      <router-view v-slot="{ Component, route }">
+        <transition name="page" mode="out-in">
+          <keep-alive>
+            <component :is="Component" :key="route.path" />
+          </keep-alive>
+        </transition>
       </router-view>
     </main>
   </div>
@@ -246,7 +248,12 @@ const menus = menuRoutes.map((r) => ({ path: `/${r.path}`, meta: r.meta }))
   color: var(--el-text-color-secondary);
   text-decoration: none;
   border: 1px solid transparent;
-  transition: all 0.18s ease;
+  transition:
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-item:hover {
@@ -313,6 +320,40 @@ const menus = menuRoutes.map((r) => ({ path: `/${r.path}`, meta: r.meta }))
   max-width: 1200px;
   margin: 0 auto;
   padding: 28px 24px 64px;
+}
+
+.page-enter-active {
+  transition:
+    opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-leave-active {
+  transition:
+    opacity 0.16s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 0.01ms linear;
+  }
+
+  .page-enter-from,
+  .page-leave-to {
+    transform: none;
+  }
 }
 
 @media (max-width: 640px) {

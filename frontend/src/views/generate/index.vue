@@ -3,13 +3,17 @@
     <div class="page-toolbar">
       <div class="toolbar-info">
         <span class="page-title">视频生成</span>
-        <span class="page-sub">
-          {{ ui.isBeginner ? '简单几步，快速出片' : '完整参数与调试信息' }}
-        </span>
+        <transition name="sub-fade" mode="out-in">
+          <span :key="ui.genMode" class="page-sub">
+            {{ ui.isBeginner ? '简单几步，快速出片' : '完整参数与调试信息' }}
+          </span>
+        </transition>
       </div>
-      <el-segmented v-model="ui.genMode" :options="VIEW_MODES" />
+      <el-segmented v-model="ui.genMode" :options="VIEW_MODES" class="mode-segmented" />
     </div>
 
+    <transition name="view-switch" mode="out-in">
+    <div :key="ui.genMode" class="view-body">
     <el-alert
       v-if="ui.isBeginner && missingApiKey"
       type="warning"
@@ -521,6 +525,8 @@
       </el-button>
       <el-button v-if="generating" size="large" @click="cancel">取消</el-button>
     </div>
+    </div>
+    </transition>
   </div>
 </template>
 
@@ -1075,8 +1081,62 @@ watch(isFast, onModelChange)
 }
 
 .page-sub {
+  display: block;
   font-size: 13px;
   color: var(--el-text-color-secondary);
+}
+
+.sub-fade-enter-active,
+.sub-fade-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.sub-fade-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.sub-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.view-switch-enter-active {
+  transition:
+    opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-switch-leave-active {
+  transition:
+    opacity 0.16s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.16s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.view-switch-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.view-switch-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sub-fade-enter-active,
+  .sub-fade-leave-active,
+  .view-switch-enter-active,
+  .view-switch-leave-active {
+    transition: opacity 0.01ms linear;
+  }
+
+  .sub-fade-enter-from,
+  .sub-fade-leave-to,
+  .view-switch-enter-from,
+  .view-switch-leave-to {
+    transform: none;
+  }
 }
 
 .config-alert {
