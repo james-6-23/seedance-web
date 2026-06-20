@@ -449,6 +449,7 @@ const endpoints = [
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .base-item .k {
@@ -463,6 +464,8 @@ const endpoints = [
   gap: 6px;
   font-size: 13px;
   color: var(--el-text-color-regular);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* 方法徽章 */
@@ -491,6 +494,7 @@ const endpoints = [
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -626,29 +630,36 @@ code {
   color: inherit;
 }
 
-/* 宽屏：目录固定贴左；正文独立居中，与目录保持距离 */
+/* 宽屏：目录占左列（文档流内 sticky），正文占右列，避免 fixed 与正文重叠 */
 @media (min-width: 901px) {
   .docs {
-    position: relative;
+    display: grid;
+    grid-template-columns: minmax(168px, 200px) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
   }
   .toc {
-    position: fixed;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: sticky;
+    top: 88px;
+    left: auto;
+    transform: none;
     flex-direction: column;
     gap: 6px;
-    width: 216px;
-    max-height: calc(100vh - 88px);
+    width: 100%;
+    max-height: calc(100vh - 100px);
     overflow-y: auto;
-    overflow-x: visible;
+    overflow-x: hidden;
     padding: 0;
     background: none;
-    z-index: 8;
+    z-index: 1;
+  }
+  .toc-chip {
+    width: 100%;
+    min-width: 0;
   }
   .docs-main {
-    width: min(1100px, 100%);
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
     min-width: 0;
   }
 }
