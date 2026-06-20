@@ -534,7 +534,7 @@
 import { reactive, ref, computed, watch, nextTick, onActivated, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { useConfigStore } from '@/store/config'
 import { useHistoryStore } from '@/store/history'
 import { useUiStore } from '@/store/ui'
@@ -677,6 +677,12 @@ function applyRestoreDraft() {
   if (Array.isArray(draft.form.refImageList)) {
     form.refImageList = [...draft.form.refImageList]
   }
+  ElNotification.success({
+    title: '参数已填入',
+    message: '可在本页修改后提交',
+    position: 'top-right',
+    duration: 3000,
+  })
 }
 
 /* --------------------------- 运行时状态 --------------------------- */

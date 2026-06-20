@@ -156,7 +156,6 @@ function restore(id) {
     return
   }
   router.push('/generate')
-  ElMessage.success('参数已填入，可在视频生成页修改后提交')
 }
 
 function confirmClear() {
