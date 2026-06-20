@@ -23,7 +23,7 @@
       </el-empty>
 
       <div v-else class="list">
-        <div v-for="item in history.sortedItems" :key="item.id" class="item">
+        <div v-for="item in pagedItems" :key="item.id" class="item">
           <div class="item-main">
             <div class="item-top">
               <el-tag size="small" effect="plain" :type="statusType(item.status)">
@@ -33,7 +33,22 @@
               <span class="item-time">{{ formatTime(item.createdAt) }}</span>
             </div>
 
-            <p class="item-prompt">{{ item.prompt || '（无提示词）' }}</p>
+            <p
+              class="item-prompt"
+              :class="{ expanded: expandedIds.has(item.id) }"
+            >
+              {{ item.prompt || '（无提示词）' }}
+            </p>
+            <el-button
+              v-if="isLongPrompt(item.prompt)"
+              text
+              type="primary"
+              size="small"
+              class="prompt-toggle"
+              @click="toggleExpand(item.id)"
+            >
+              {{ expandedIds.has(item.id) ? '收起' : '展开' }}
+            </el-button>
 
             <div class="item-meta">
               <span class="model-name">{{ item.model || '—' }}</span>
@@ -89,6 +104,16 @@
                 复制链接
               </el-button>
               <el-button
+                v-if="item.videoUrl"
+                text
+                type="primary"
+                size="small"
+                :loading="downloadingId === item.id"
+                @click="download(item)"
+              >
+                下载
+              </el-button>
+              <el-button
                 text
                 type="danger"
                 size="small"
@@ -98,6 +123,17 @@
               </el-button>
             </div>
           </div>
+        </div>
+
+        <div v-if="history.total > PAGE_SIZE" class="pager">
+          <el-pagination
+            layout="prev, pager, next"
+            background
+            :total="history.total"
+            :page-size="PAGE_SIZE"
+            :current-page="currentPage"
+            @current-change="onPageChange"
+          />
         </div>
       </div>
     </el-card>
@@ -125,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -134,8 +170,42 @@ import { useHistoryStore } from '@/store/history'
 const router = useRouter()
 const history = useHistoryStore()
 
+const PAGE_SIZE = 5
+const PROMPT_LIMIT = 60
+
 const playerVisible = ref(false)
 const playerUrl = ref('')
+const downloadingId = ref('')
+
+const currentPage = ref(1)
+const expandedIds = reactive(new Set())
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(history.total / PAGE_SIZE)),
+)
+
+const pagedItems = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return history.sortedItems.slice(start, start + PAGE_SIZE)
+})
+
+// 记录数变化（删除/清空）后，避免停留在不存在的空白页
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) currentPage.value = pages
+})
+
+function isLongPrompt(prompt) {
+  return (prompt || '').length > PROMPT_LIMIT
+}
+
+function toggleExpand(id) {
+  if (expandedIds.has(id)) expandedIds.delete(id)
+  else expandedIds.add(id)
+}
+
+function onPageChange(page) {
+  currentPage.value = page
+}
 
 const STATUS_MAP = {
   processing: { label: '生成中', type: 'warning', icon: 'mingcute:loading-3-line' },
@@ -175,6 +245,33 @@ function copy(text) {
 function openVideo(url) {
   playerUrl.value = url
   playerVisible.value = true
+}
+
+async function download(item) {
+  const url = item.videoUrl
+  if (!url || downloadingId.value) return
+  const filename = `seedance-${item.taskId || item.id}.mp4`
+  downloadingId.value = item.id
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(objectUrl)
+    ElMessage.success('已开始下载')
+  } catch (err) {
+    // 跨域等原因导致 fetch 失败时，退回到新标签页打开，由浏览器处理
+    window.open(url, '_blank', 'noopener,noreferrer')
+    ElMessage.warning('无法直接下载，已在新标签页打开')
+  } finally {
+    downloadingId.value = ''
+  }
 }
 
 function restore(id) {
@@ -267,6 +364,25 @@ function confirmClear() {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.item-prompt.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  white-space: pre-wrap;
+}
+
+.prompt-toggle {
+  height: auto;
+  padding: 2px 0;
+  margin-top: 2px;
+}
+
+.pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .item-meta {
