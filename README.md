@@ -8,6 +8,14 @@
 
 ---
 
+## 🚀 一键部署
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/james-6-23/seedance-web)
+
+点击按钮，Cloudflare 会把本仓库克隆到你的 GitHub 账户、自动构建前端并部署，**全程零配置**（无需绑定任何资源）。部署完成后打开「API 配置」填入你的 API Key 即可使用。
+
+---
+
 ## ✨ 功能
 
 - **5 种生成模式**：文生视频、首帧/图参考、首尾帧、多图参考、多模态（图/视频/音频混合）
