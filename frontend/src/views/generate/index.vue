@@ -811,17 +811,13 @@ const STATUS_LABELS = {
   succeeded: '已完成',
 }
 
-function getPollDelay(attempt) {
-  if (attempt < 6) return 5000
-  if (attempt < 12) return 10000
-  return 15000
-}
+const POLL_INTERVAL_MS = 5000
 
 function pollTask(id) {
   pollAborted = false
   let attempt = 0
   const maxAttempts = 60
-  appendLog('3s 后进行首次状态查询…', 'info', '任务已提交，即将查询进度')
+  appendLog('5s 后进行首次状态查询…', 'info', '任务已提交，即将查询进度')
 
   return new Promise((resolve, reject) => {
     async function tick() {
@@ -913,9 +909,8 @@ function pollTask(id) {
           return reject(new Error('轮询超时'))
         }
 
-        const delay = getPollDelay(attempt)
-        appendLog(`等待 ${delay / 1000}s 后继续轮询…`, 'info', `继续等待中（${delay / 1000} 秒后再查）`)
-        pollTimer = setTimeout(tick, delay)
+        appendLog('等待 5s 后继续轮询…', 'info', '继续等待中（5 秒后再查询）')
+        pollTimer = setTimeout(tick, POLL_INTERVAL_MS)
       } catch (err) {
         const parsed = err.parsed || parseErrorPayload(err.data, err.status)
         setPoll(`查询失败 · ${parsed.primaryCode}`, 'error')
@@ -932,7 +927,7 @@ function pollTask(id) {
         reject(err)
       }
     }
-    pollTimer = setTimeout(tick, 3000)
+    pollTimer = setTimeout(tick, POLL_INTERVAL_MS)
   })
 }
 
@@ -1874,9 +1869,9 @@ watch(isFast, onModelChange)
 }
 
 .live-log-list {
-  height: 180px;
-  min-height: 180px;
-  max-height: 180px;
+  height: 280px;
+  min-height: 280px;
+  max-height: 280px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 10px 12px;
