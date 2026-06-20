@@ -9,3 +9,4 @@ frontend/auto-imports.d.ts
 frontend/components.d.ts
 .gstack/
 cloud-mail/
+frontend/bun.lock

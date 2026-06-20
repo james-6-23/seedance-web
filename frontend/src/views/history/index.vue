@@ -36,7 +36,7 @@
             <p class="item-prompt">{{ item.prompt || '（无提示词）' }}</p>
 
             <div class="item-meta">
-              <span>{{ shortModel(item.model) }}</span>
+              <span class="model-name">{{ item.model || '—' }}</span>
               <span>{{ item.resolution }}</span>
               <span>{{ item.ratio }}</span>
               <span>{{ item.duration }}s</span>
@@ -49,15 +49,22 @@
           </div>
 
           <div class="item-side">
-            <video
+            <div
               v-if="item.videoUrl"
-              :src="item.videoUrl"
-              class="thumb"
-              muted
-              playsinline
-              preload="metadata"
+              class="thumb-wrap"
               @click="openVideo(item.videoUrl)"
-            />
+            >
+              <video
+                :src="item.videoUrl"
+                class="thumb"
+                muted
+                playsinline
+                preload="metadata"
+              />
+              <div class="play-overlay">
+                <Icon icon="mingcute:play-circle-fill" width="40" height="40" />
+              </div>
+            </div>
             <div v-else class="thumb placeholder">
               <Icon :icon="statusIcon(item.status)" width="28" height="28" />
             </div>
@@ -94,10 +101,31 @@
         </div>
       </div>
     </el-card>
+
+    <el-dialog
+      v-model="playerVisible"
+      width="720px"
+      align-center
+      append-to-body
+      destroy-on-close
+      class="video-dialog"
+      :show-close="true"
+      @closed="playerUrl = ''"
+    >
+      <video
+        v-if="playerUrl"
+        :src="playerUrl"
+        class="player"
+        controls
+        autoplay
+        playsinline
+      />
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -105,6 +133,9 @@ import { useHistoryStore } from '@/store/history'
 
 const router = useRouter()
 const history = useHistoryStore()
+
+const playerVisible = ref(false)
+const playerUrl = ref('')
 
 const STATUS_MAP = {
   processing: { label: '生成中', type: 'warning', icon: 'mingcute:loading-3-line' },
@@ -129,11 +160,6 @@ function formatTime(ts) {
   return new Date(ts).toLocaleString('zh-CN', { hour12: false })
 }
 
-function shortModel(model) {
-  if (!model) return '—'
-  return model.includes('fast') ? 'fast' : '标准'
-}
-
 function shortId(id) {
   if (!id || id.length <= 14) return id
   return `${id.slice(0, 8)}…${id.slice(-4)}`
@@ -147,7 +173,8 @@ function copy(text) {
 }
 
 function openVideo(url) {
-  window.open(url, '_blank', 'noopener,noreferrer')
+  playerUrl.value = url
+  playerVisible.value = true
 }
 
 function restore(id) {
@@ -255,6 +282,11 @@ function confirmClear() {
   font-family: "SFMono-Regular", Menlo, monospace;
 }
 
+.model-name {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  word-break: break-all;
+}
+
 .item-error {
   margin-top: 8px;
   font-size: 12px;
@@ -277,6 +309,46 @@ function confirmClear() {
   object-fit: cover;
   background: #000;
   cursor: pointer;
+}
+
+.thumb-wrap {
+  position: relative;
+  width: 120px;
+  height: 68px;
+  cursor: pointer;
+}
+
+.thumb-wrap .thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.28);
+  opacity: 0.85;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  pointer-events: none;
+}
+
+.thumb-wrap:hover .play-overlay {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.player {
+  width: 100%;
+  max-height: 70vh;
+  display: block;
+  border-radius: 8px;
+  background: #000;
 }
 
 .thumb.placeholder {
@@ -303,6 +375,7 @@ function confirmClear() {
   .item-side {
     align-items: stretch;
   }
+  .thumb-wrap,
   .thumb {
     width: 100%;
     height: auto;
