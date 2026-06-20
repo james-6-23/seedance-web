@@ -1,0 +1,11 @@
+node_modules/
+frontend/node_modules/
+public/
+.wrangler/
+.dev.vars
+.DS_Store
+*.local
+frontend/auto-imports.d.ts
+frontend/components.d.ts
+.gstack/
+cloud-mail/
