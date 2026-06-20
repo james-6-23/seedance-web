@@ -1813,7 +1813,8 @@ watch(isFast, onModelChange)
 }
 
 .beginner-tips {
-  padding: 14px;
+  margin-bottom: 16px;
+  padding: 16px 16px 14px;
   border-radius: 10px;
   background: var(--soft-fill);
   border: 1px solid var(--glass-border);
