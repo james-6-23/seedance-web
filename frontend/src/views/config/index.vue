@@ -66,103 +66,15 @@
         title="配置实时生效"
         description="修改即保存，无需额外操作。API Key 仅存储在你本机浏览器中。"
       />
-
-      <div class="backup-section">
-        <div class="backup-head">
-          <span class="backup-title">配置备份</span>
-          <span class="backup-hint">
-            建议导出备份。换域名、清缓存或项目大版本更新后，可用备份一键恢复 Key。
-          </span>
-        </div>
-        <div class="backup-actions">
-          <el-button @click="exportBackup">
-            <Icon icon="mingcute:download-2-line" width="16" height="16" />
-            <span>导出备份</span>
-          </el-button>
-          <el-button @click="copyBackup">
-            <Icon icon="mingcute:copy-2-line" width="16" height="16" />
-            <span>复制备份</span>
-          </el-button>
-          <el-button @click="pickBackupFile">
-            <Icon icon="mingcute:upload-2-line" width="16" height="16" />
-            <span>从文件恢复</span>
-          </el-button>
-          <input
-            ref="fileInput"
-            type="file"
-            accept="application/json,.json"
-            class="file-input"
-            @change="onBackupFile"
-          />
-        </div>
-        <p class="backup-note">
-          配置按「网站域名」分别保存。例如
-          <code>*.workers.dev</code>
-          与自定义域名互不相通；换浏览器或无痕模式也需要重新填写或导入备份。
-        </p>
-      </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { useConfigStore } from '@/store/config'
-import {
-  buildConfigBackup,
-  parseConfigBackup,
-  applyConfigBackup,
-  downloadConfigBackup,
-} from '@/utils/config-storage'
 
 const config = useConfigStore()
-const fileInput = ref(null)
-
-function exportBackup() {
-  downloadConfigBackup(config)
-  ElMessage.success('备份文件已下载')
-}
-
-function copyBackup() {
-  const text = JSON.stringify(buildConfigBackup(config), null, 2)
-  navigator.clipboard
-    .writeText(text)
-    .then(() => ElMessage.success('备份已复制到剪贴板'))
-    .catch(() => ElMessage.error('复制失败，请改用导出备份'))
-}
-
-function pickBackupFile() {
-  fileInput.value?.click()
-}
-
-async function restoreBackup(raw) {
-  try {
-    const cfg = parseConfigBackup(raw)
-    await ElMessageBox.confirm(
-      '将用备份覆盖当前 API 地址、路径、Key 与代理设置，是否继续？',
-      '恢复配置',
-      { type: 'warning', confirmButtonText: '恢复', cancelButtonText: '取消' }
-    )
-    applyConfigBackup(config, cfg)
-    ElMessage.success('配置已从备份恢复')
-  } catch (e) {
-    if (e === 'cancel' || e === 'close') return
-    ElMessage.error(e?.message || '备份无效，请检查文件内容')
-  }
-}
-
-function onBackupFile(event) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = () => restoreBackup(reader.result)
-  reader.onerror = () => ElMessage.error('读取文件失败')
-  reader.readAsText(file)
-}
 </script>
 
 <style scoped>
@@ -230,53 +142,5 @@ code {
 
 .key-link:hover {
   color: var(--el-color-primary-light-3);
-}
-
-.backup-section {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid var(--glass-border);
-}
-
-.backup-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.backup-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.backup-hint {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.6;
-}
-
-.backup-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.backup-actions .el-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.backup-note {
-  margin: 12px 0 0;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--el-text-color-secondary);
-}
-
-.file-input {
-  display: none;
 }
 </style>

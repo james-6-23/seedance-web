@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { CONFIG_STORAGE_KEY, migrateLegacyConfig } from '@/utils/config-storage'
 
 function isLocalHost() {
   const h = location.hostname
@@ -29,11 +28,5 @@ export const useConfigStore = defineStore('config', {
       return state.apiKey.trim()
     },
   },
-  persist: {
-    key: CONFIG_STORAGE_KEY,
-    pick: ['apiBase', 'apiPath', 'apiKey', 'useProxy'],
-    afterRestore(ctx) {
-      migrateLegacyConfig(ctx.store)
-    },
-  },
+  persist: true,
 })
