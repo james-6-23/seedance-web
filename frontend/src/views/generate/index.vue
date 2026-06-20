@@ -356,7 +356,12 @@
       <!-- 状态 -->
       <div class="status" :class="status.state">
         <div class="status-icon">
-          <Icon :icon="displayStatus.icon" width="22" height="22" />
+          <Icon
+            :icon="displayStatus.icon"
+            width="22"
+            height="22"
+            :class="{ 'status-icon-spin': status.state === 'queued' || status.state === 'processing' }"
+          />
         </div>
         <div class="status-text">
           <div class="status-title">{{ displayStatus.title }}</div>
@@ -1556,6 +1561,25 @@ watch(isFast, onModelChange)
 .status.queued .status-icon,
 .status.processing .status-icon {
   color: var(--el-color-primary);
+}
+
+.status-icon-spin {
+  animation: status-icon-spin 1s linear infinite;
+}
+
+@keyframes status-icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-icon-spin {
+    animation: none;
+  }
 }
 .status.success .status-icon {
   color: var(--el-color-success);
