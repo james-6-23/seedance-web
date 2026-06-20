@@ -269,3 +269,35 @@ export function queryTask(taskId) {
   const config = useConfigStore()
   return apiRequest('GET', `${config.path}/${taskId}`)
 }
+
+/* --------------------- 临时图床（同源 Worker 接口）--------------------- */
+
+// 上传参考素材到自建图床，返回 { key, url }。url 可直接作为参考图/视频地址。
+export async function uploadAsset(file) {
+  const res = await fetch('/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.message || `上传失败（HTTP ${res.status}）`)
+  return data
+}
+
+// 生成结束后销毁临时素材，best-effort，失败不阻塞主流程
+export async function deleteAsset(keyOrUrl) {
+  if (!keyOrUrl) return
+  const payload =
+    typeof keyOrUrl === 'string' && keyOrUrl.includes('/files/')
+      ? { url: keyOrUrl }
+      : { key: keyOrUrl }
+  try {
+    await fetch('/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    /* 忽略：生命周期规则会兜底清理 */
+  }
+}

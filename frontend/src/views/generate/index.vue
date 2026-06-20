@@ -199,10 +199,17 @@
           <!-- 首帧 / 图参考 -->
           <template v-if="mode === 'first_frame'">
             <el-form-item :label="ui.isBeginner ? '参考图片链接' : '首帧 / 参考图 URL'" class="span-2">
-              <el-input
-                v-model="form.firstFrameUrl"
-                :placeholder="ui.isBeginner ? '粘贴图片的网络地址，如 https://...' : 'https://example.com/image.png'"
-              />
+              <div class="url-with-upload">
+                <el-input
+                  v-model="form.firstFrameUrl"
+                  :placeholder="ui.isBeginner ? '粘贴图片的网络地址，如 https://...' : 'https://example.com/image.png'"
+                />
+                <AssetUpload
+                  accept="image/*"
+                  v-model="form.firstFrameUrl"
+                  @uploaded="trackUpload"
+                />
+              </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.firstFrameUrl }}</p>
             </el-form-item>
             <el-form-item :label="ui.isBeginner ? '图片怎么用' : '图片角色'">
@@ -223,11 +230,17 @@
           <!-- 首尾帧 -->
           <template v-else-if="mode === 'first_last'">
             <el-form-item :label="ui.isBeginner ? '开始画面（图片链接）' : '首帧图 URL'" class="span-2">
-              <el-input v-model="form.firstFrameUrl" placeholder="https://example.com/start.png" />
+              <div class="url-with-upload">
+                <el-input v-model="form.firstFrameUrl" placeholder="https://example.com/start.png" />
+                <AssetUpload accept="image/*" v-model="form.firstFrameUrl" @uploaded="trackUpload" />
+              </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.firstFrameUrl }}</p>
             </el-form-item>
             <el-form-item :label="ui.isBeginner ? '结束画面（图片链接）' : '尾帧图 URL'" class="span-2">
-              <el-input v-model="form.lastFrameUrl" placeholder="https://example.com/end.png" />
+              <div class="url-with-upload">
+                <el-input v-model="form.lastFrameUrl" placeholder="https://example.com/end.png" />
+                <AssetUpload accept="image/*" v-model="form.lastFrameUrl" @uploaded="trackUpload" />
+              </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.lastFrameUrl }}</p>
             </el-form-item>
           </template>
@@ -240,6 +253,11 @@
                   <el-input
                     v-model="form.refImageList[i]"
                     placeholder="https://example.com/ref.png"
+                  />
+                  <AssetUpload
+                    accept="image/*"
+                    v-model="form.refImageList[i]"
+                    @uploaded="trackUpload"
                   />
                   <el-button
                     circle
@@ -260,18 +278,27 @@
           <!-- 多模态 -->
           <template v-else-if="mode === 'multimodal'">
             <el-form-item :label="ui.isBeginner ? '参考图片（可选）' : '参考图 URL'" class="span-2">
-              <el-input v-model="form.refImageUrl" placeholder="https://example.com/portrait.png" />
+              <div class="url-with-upload">
+                <el-input v-model="form.refImageUrl" placeholder="https://example.com/portrait.png" />
+                <AssetUpload accept="image/*" v-model="form.refImageUrl" @uploaded="trackUpload" />
+              </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refImageUrl }}</p>
             </el-form-item>
             <el-form-item :label="ui.isBeginner ? '参考视频（可选）' : '参考视频 URL'" class="span-2">
-              <el-input v-model="form.refVideoUrl" placeholder="https://example.com/reference.mp4" />
+              <div class="url-with-upload">
+                <el-input v-model="form.refVideoUrl" placeholder="https://example.com/reference.mp4" />
+                <AssetUpload accept="video/*" v-model="form.refVideoUrl" @uploaded="trackUpload" />
+              </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refVideoUrl }}</p>
             </el-form-item>
             <el-form-item
               :label="ui.isBeginner ? '参考音频（可选，需配合图或视频）' : '参考音频 URL（需配合图或视频）'"
               class="span-2"
             >
-              <el-input v-model="form.refAudioUrl" placeholder="https://example.com/reference.mp3" />
+              <div class="url-with-upload">
+                <el-input v-model="form.refAudioUrl" placeholder="https://example.com/reference.mp3" />
+                <AssetUpload accept="audio/*" v-model="form.refAudioUrl" @uploaded="trackUpload" />
+              </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refAudioUrl }}</p>
             </el-form-item>
           </template>
@@ -564,7 +591,9 @@ import {
   parseErrorPayload,
   formatErrorForLog,
   ApiError,
+  deleteAsset,
 } from '@/api/seedance'
+import AssetUpload from '@/components/AssetUpload.vue'
 
 const router = useRouter()
 const config = useConfigStore()
@@ -617,6 +646,20 @@ const form = reactive({
   refVideoUrl: '',
   refAudioUrl: '',
 })
+
+// 本次会话内上传到自建图床的素材 URL，生成结束后统一销毁
+const uploadedAssets = ref(new Set())
+
+function trackUpload(url) {
+  if (url) uploadedAssets.value.add(url)
+}
+
+// 清理已上传的临时素材（best-effort），并清空追踪集合
+function cleanupUploads() {
+  const urls = [...uploadedAssets.value]
+  uploadedAssets.value.clear()
+  urls.forEach((u) => deleteAsset(u))
+}
 
 const isFast = computed(() => form.model === MODEL_FAST)
 const resolutions = computed(() => (isFast.value ? ['480p', '720p'] : ['480p', '720p', '1080p']))
@@ -1041,6 +1084,8 @@ async function handleGenerate() {
     }
   } finally {
     generating.value = false
+    // 任务已结束（成功/失败/超时），上游已拉取过素材，销毁临时图床文件
+    cleanupUploads()
   }
 }
 
@@ -1596,6 +1641,17 @@ watch(isFast, onModelChange)
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.url-with-upload {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.url-with-upload .el-input {
+  flex: 1;
 }
 
 /* 状态面板 */
