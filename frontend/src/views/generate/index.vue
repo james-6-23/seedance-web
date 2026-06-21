@@ -271,9 +271,20 @@
                     <Icon icon="mingcute:close-line" width="16" height="16" />
                   </el-button>
                 </div>
-                <el-button text type="primary" @click="form.refImageList.push('')">
-                  + 添加参考图
-                </el-button>
+                <div class="ref-actions">
+                  <el-button text type="primary" @click="form.refImageList.push('')">
+                    + 添加参考图
+                  </el-button>
+                  <el-button
+                    v-if="hasRefImages"
+                    text
+                    type="danger"
+                    @click="clearRefImages"
+                  >
+                    <Icon icon="mingcute:delete-2-line" width="15" height="15" />
+                    <span style="margin-left: 4px">清空素材</span>
+                  </el-button>
+                </div>
               </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refImageList }}</p>
             </el-form-item>
@@ -823,6 +834,26 @@ function applyPromptExample(text) {
 
 function removeRefImage(i) {
   if (form.refImageList.length > 1) form.refImageList.splice(i, 1)
+}
+
+// 多图参考：是否有已填写/上传的参考图
+const hasRefImages = computed(() => form.refImageList.some((u) => (u || '').trim()))
+
+// 一键清空多图参考（带确认），销毁已上传到 R2 的文件，保留一个空行
+function clearRefImages() {
+  ElMessageBox.confirm('确定清空所有参考图？此操作不可恢复。', '清空素材', {
+    type: 'warning',
+    confirmButtonText: '清空',
+    cancelButtonText: '取消',
+  })
+    .then(() => {
+      form.refImageList.forEach((u) => {
+        if ((u || '').trim()) discardAsset(u)
+      })
+      form.refImageList = ['']
+      ElMessage.success('已清空素材')
+    })
+    .catch(() => {})
 }
 
 /* --------------------- 多模态：多素材 + @ 引用 --------------------- */
@@ -1893,6 +1924,12 @@ watch(isFast, onModelChange)
 }
 
 /* 多模态：多素材分组 + @ 引用 */
+.ref-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .mm-toolbar :deep(.el-form-item__content) {
   justify-content: flex-end;
 }
