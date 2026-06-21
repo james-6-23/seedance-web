@@ -768,18 +768,20 @@ const form = reactive({
   refAudios: [],
 })
 
-// 本次会话内上传到自建图床的素材 URL，生成结束后统一销毁
+// 本次会话内上传到自建图床的素材 URL
 const uploadedAssets = ref(new Set())
 
 function trackUpload(url) {
   if (url) uploadedAssets.value.add(url)
 }
 
-// 清理已上传的临时素材（best-effort），并清空追踪集合
-function cleanupUploads() {
-  const urls = [...uploadedAssets.value]
-  uploadedAssets.value.clear()
-  urls.forEach((u) => deleteAsset(u))
+// 仅当某个素材被移除 / 被新上传替换时，才销毁它对应的临时文件。
+// 注意：不要在生成结束后统一删除——重试或微调重提交仍需这些 URL 有效，
+// 提早删除会导致火山后端下载 404。会话遗弃的文件由 R2 生命周期规则（1 天）兜底清理。
+function discardAsset(url) {
+  if (!url || !uploadedAssets.value.has(url)) return
+  uploadedAssets.value.delete(url)
+  deleteAsset(url)
 }
 
 // 把生成视频的尾帧图用作下一段视频的首帧，便于连续接帧
@@ -849,13 +851,17 @@ function addMaterial(kind) {
 
 function removeMaterial(kind, i) {
   const list = { image: form.refImages, video: form.refVideos, audio: form.refAudios }[kind]
-  list.splice(i, 1)
+  const [removed] = list.splice(i, 1)
+  if (removed?.url) discardAsset(removed.url)
 }
 
-// 上传成功后填入对应素材槽的 url
+// 上传成功后填入对应素材槽的 url；若该槽原有已上传文件则先销毁旧的
 function onMaterialUploaded(kind, i, url) {
   const list = { image: form.refImages, video: form.refVideos, audio: form.refAudios }[kind]
-  if (list[i]) list[i].url = url
+  const slot = list[i]
+  if (!slot) return
+  if (slot.url && slot.url !== url) discardAsset(slot.url)
+  slot.url = url
   trackUpload(url)
 }
 
@@ -1262,8 +1268,6 @@ async function handleGenerate() {
     }
   } finally {
     generating.value = false
-    // 任务已结束（成功/失败/超时），上游已拉取过素材，销毁临时图床文件
-    cleanupUploads()
   }
 }
 
