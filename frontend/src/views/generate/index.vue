@@ -281,6 +281,12 @@
 
           <!-- 多模态：多素材 + @ 引用 -->
           <template v-else-if="mode === 'multimodal'">
+            <el-form-item v-if="hasMaterials" class="span-2 mm-toolbar">
+              <el-button text type="danger" size="small" @click="clearMaterials">
+                <Icon icon="mingcute:delete-2-line" width="15" height="15" />
+                <span style="margin-left: 4px">清空素材</span>
+              </el-button>
+            </el-form-item>
             <!-- 参考图片 -->
             <el-form-item class="span-2">
               <template #label>
@@ -679,7 +685,7 @@
 import { reactive, ref, computed, watch, nextTick, onActivated, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import { useConfigStore } from '@/store/config'
 import { useHistoryStore } from '@/store/history'
 import { useUiStore } from '@/store/ui'
@@ -863,6 +869,29 @@ const mmCounts = computed(() => ({
   video: form.refVideos.length,
   audio: form.refAudios.length,
 }))
+
+const hasMaterials = computed(
+  () => form.refImages.length + form.refVideos.length + form.refAudios.length > 0
+)
+
+// 一键清空全部参考素材（带确认），同时销毁已上传到 R2 的文件
+function clearMaterials() {
+  ElMessageBox.confirm('确定清空所有已添加的参考素材？此操作不可恢复。', '清空素材', {
+    type: 'warning',
+    confirmButtonText: '清空',
+    cancelButtonText: '取消',
+  })
+    .then(() => {
+      ;[...form.refImages, ...form.refVideos, ...form.refAudios].forEach((m) => {
+        if (m.url) discardAsset(m.url)
+      })
+      form.refImages = []
+      form.refVideos = []
+      form.refAudios = []
+      ElMessage.success('已清空素材')
+    })
+    .catch(() => {})
+}
 
 function addMaterial(kind) {
   const list = { image: form.refImages, video: form.refVideos, audio: form.refAudios }[kind]
@@ -1864,6 +1893,10 @@ watch(isFast, onModelChange)
 }
 
 /* 多模态：多素材分组 + @ 引用 */
+.mm-toolbar :deep(.el-form-item__content) {
+  justify-content: flex-end;
+}
+
 .mm-group {
   display: flex;
   flex-direction: column;
