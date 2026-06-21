@@ -23,7 +23,7 @@
 <script setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import { ElMessage } from 'element-plus'
+import { ElNotification } from 'element-plus'
 import { uploadAsset } from '@/api/seedance'
 
 const props = defineProps({
@@ -36,22 +36,82 @@ const emit = defineEmits(['update:modelValue', 'uploaded'])
 const inputEl = ref(null)
 const uploading = ref(false)
 
+// 图片规范（与火山引擎要求一致）
+const IMG_MIN = 300
+const IMG_MAX = 6000
+const MAX_BYTES = 50 * 1024 * 1024 // 50MB，与 Worker 端一致
+
 function trigger() {
   inputEl.value?.click()
+}
+
+// 左上角错误提示
+function notifyError(message) {
+  ElNotification.error({
+    title: '无法使用该文件',
+    message,
+    position: 'top-left',
+    duration: 4000,
+  })
+}
+
+// 读取图片宽高，校验是否符合请求规范；返回 true 表示通过
+function validateImage(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const { naturalWidth: w, naturalHeight: h } = img
+      if (w < IMG_MIN || h < IMG_MIN) {
+        notifyError(`图片尺寸过小（${w}×${h}），宽高需 ≥ ${IMG_MIN}px，请重新上传`)
+        return resolve(false)
+      }
+      if (w > IMG_MAX || h > IMG_MAX) {
+        notifyError(`图片尺寸过大（${w}×${h}），宽高需 ≤ ${IMG_MAX}px，请重新上传`)
+        return resolve(false)
+      }
+      resolve(true)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      notifyError('无法读取该图片，请确认文件未损坏后重新上传')
+      resolve(false)
+    }
+    img.src = url
+  })
 }
 
 async function onPick(e) {
   const file = e.target.files?.[0]
   e.target.value = '' // 允许重复选择同一文件
   if (!file) return
+
+  // 大小预校验
+  if (file.size > MAX_BYTES) {
+    notifyError('文件过大（上限 50MB），请压缩后重新上传')
+    return
+  }
+
+  // 图片尺寸预校验：不合规则不上传到 R2，避免无谓的传后即删
+  if (file.type.startsWith('image/')) {
+    const ok = await validateImage(file)
+    if (!ok) return
+  }
+
   uploading.value = true
   try {
     const { url } = await uploadAsset(file)
     emit('update:modelValue', url)
     emit('uploaded', url)
-    ElMessage.success('已上传，链接已填入')
+    ElNotification.success({
+      title: '上传成功',
+      message: '链接已填入',
+      position: 'top-left',
+      duration: 2000,
+    })
   } catch (err) {
-    ElMessage.error(err.message || '上传失败')
+    notifyError(err.message || '上传失败，请重试')
   } finally {
     uploading.value = false
   }
