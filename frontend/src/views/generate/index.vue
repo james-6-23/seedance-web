@@ -165,7 +165,6 @@
               <span>{{ ui.isBeginner ? '③ 描述你想要的画面' : '提示词' }}</span>
             </template>
             <el-mention
-              v-if="mode === 'multimodal'"
               v-model="form.prompt"
               :options="mentionOptions"
               type="textarea"
@@ -173,18 +172,7 @@
               :maxlength="PROMPT_MAX"
               show-word-limit
               whole
-              placeholder="输入 @ 引用上传的素材，例如 @Image1 作为首帧。描述你想生成的视频内容"
-            />
-            <el-input
-              v-else
-              v-model="form.prompt"
-              type="textarea"
-              :rows="ui.isBeginner ? 4 : 3"
-              :maxlength="PROMPT_MAX"
-              show-word-limit
-              :placeholder="ui.isBeginner
-                ? '例如：一只橘猫在阳光下伸懒腰，毛发蓬松，温馨治愈风格，慢镜头'
-                : '描述你想生成的视频内容，例如：一只橘猫在阳光下伸懒腰，温馨治愈风格'"
+              :placeholder="promptPlaceholder"
             />
             <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.prompt }}</p>
             <div v-if="ui.isBeginner" class="prompt-examples">
@@ -211,7 +199,8 @@
           <!-- 首帧 / 图参考 -->
           <template v-if="mode === 'first_frame'">
             <el-form-item :label="ui.isBeginner ? '参考图片链接' : '首帧 / 参考图 URL'" class="span-2">
-              <div class="url-with-upload">
+              <div class="mm-item">
+                <span class="mm-tag">@{{ form.imageRole === 'reference_image' ? 'Image1' : 'FirstFrame' }}</span>
                 <el-input
                   v-model="form.firstFrameUrl"
                   :placeholder="ui.isBeginner ? '粘贴图片的网络地址，如 https://...' : 'https://example.com/image.png'"
@@ -242,14 +231,16 @@
           <!-- 首尾帧 -->
           <template v-else-if="mode === 'first_last'">
             <el-form-item :label="ui.isBeginner ? '开始画面（图片链接）' : '首帧图 URL'" class="span-2">
-              <div class="url-with-upload">
+              <div class="mm-item">
+                <span class="mm-tag">@FirstFrame</span>
                 <el-input v-model="form.firstFrameUrl" placeholder="https://example.com/start.png" />
                 <AssetUpload accept="image/*" v-model="form.firstFrameUrl" @uploaded="trackUpload" />
               </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.firstFrameUrl }}</p>
             </el-form-item>
             <el-form-item :label="ui.isBeginner ? '结束画面（图片链接）' : '尾帧图 URL'" class="span-2">
-              <div class="url-with-upload">
+              <div class="mm-item">
+                <span class="mm-tag">@LastFrame</span>
                 <el-input v-model="form.lastFrameUrl" placeholder="https://example.com/end.png" />
                 <AssetUpload accept="image/*" v-model="form.lastFrameUrl" @uploaded="trackUpload" />
               </div>
@@ -261,7 +252,8 @@
           <template v-else-if="mode === 'multi_image'">
             <el-form-item :label="ui.isBeginner ? '参考图片（可多张）' : '参考图 URL 列表'" class="span-2">
               <div class="url-list">
-                <div v-for="(u, i) in form.refImageList" :key="i" class="url-item">
+                <div v-for="(u, i) in form.refImageList" :key="i" class="mm-item">
+                  <span class="mm-tag">@Image{{ i + 1 }}</span>
                   <el-input
                     v-model="form.refImageList[i]"
                     placeholder="https://example.com/ref.png"
@@ -825,13 +817,39 @@ function removeRefImage(i) {
 
 const MM_LIMITS = { image: 9, video: 3, audio: 3 }
 
-// 供 el-mention 下拉：已上传素材生成 @Image1 / @Video1 / @Audio1 选项
+// 供 el-mention 下拉：按当前模式生成可引用的素材 token（英文显示）
 const mentionOptions = computed(() => {
   const opts = []
-  form.refImages.forEach((_, i) => opts.push({ value: `Image${i + 1}`, label: `Image${i + 1}` }))
-  form.refVideos.forEach((_, i) => opts.push({ value: `Video${i + 1}`, label: `Video${i + 1}` }))
-  form.refAudios.forEach((_, i) => opts.push({ value: `Audio${i + 1}`, label: `Audio${i + 1}` }))
+  if (mode.value === 'first_frame') {
+    if (form.firstFrameUrl) {
+      opts.push(
+        form.imageRole === 'reference_image'
+          ? { value: 'Image1', label: 'Image1' }
+          : { value: 'FirstFrame', label: 'FirstFrame' }
+      )
+    }
+  } else if (mode.value === 'first_last') {
+    if (form.firstFrameUrl) opts.push({ value: 'FirstFrame', label: 'FirstFrame' })
+    if (form.lastFrameUrl) opts.push({ value: 'LastFrame', label: 'LastFrame' })
+  } else if (mode.value === 'multi_image') {
+    form.refImageList.forEach((u, i) => {
+      if ((u || '').trim()) opts.push({ value: `Image${i + 1}`, label: `Image${i + 1}` })
+    })
+  } else if (mode.value === 'multimodal') {
+    form.refImages.forEach((_, i) => opts.push({ value: `Image${i + 1}`, label: `Image${i + 1}` }))
+    form.refVideos.forEach((_, i) => opts.push({ value: `Video${i + 1}`, label: `Video${i + 1}` }))
+    form.refAudios.forEach((_, i) => opts.push({ value: `Audio${i + 1}`, label: `Audio${i + 1}` }))
+  }
   return opts
+})
+
+const promptPlaceholder = computed(() => {
+  if (mentionOptions.value.length) {
+    return '输入 @ 引用上传的素材，例如 @Image1 / @FirstFrame。再描述你想生成的画面'
+  }
+  return ui.isBeginner
+    ? '例如：一只橘猫在阳光下伸懒腰，毛发蓬松，温馨治愈风格，慢镜头'
+    : '描述你想生成的视频内容，例如：一只橘猫在阳光下伸懒腰，温馨治愈风格'
 })
 
 const mmCounts = computed(() => ({
@@ -1857,6 +1875,7 @@ watch(isFast, onModelChange)
 .mm-tag {
   flex-shrink: 0;
   min-width: 64px;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 600;
   text-align: center;

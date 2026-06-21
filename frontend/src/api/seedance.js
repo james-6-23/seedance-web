@@ -149,15 +149,19 @@ export function findLastFrameUrl(data) {
 
 /* ----------------------------- 请求构建 ----------------------------- */
 
-// 把提示词里的 @Image1 / @Video2 / @Audio1 引用转成中文「图片1 / 视频2 / 音频1」，
-// 与 content 数组的顺序对应（官方指南示例即用「图片 N」指代）。
+// 把提示词里的 @Image1 / @Video2 / @Audio1 / @FirstFrame / @LastFrame 引用
+// 转成中文「图片1 / 视频2 / 音频1 / 首帧 / 尾帧」，与 content 顺序对应
+// （官方指南示例即用「图片 N / 首帧 / 尾帧」指代）。
 export function resolveMentions(text) {
   if (!text) return text
   const map = { image: '图片', video: '视频', audio: '音频' }
-  return text.replace(/@(Image|Video|Audio)(\d+)/gi, (m, kind, n) => {
-    const cn = map[kind.toLowerCase()]
-    return cn ? `${cn}${n}` : m
-  })
+  return text
+    .replace(/@(Image|Video|Audio)(\d+)/gi, (m, kind, n) => {
+      const cn = map[kind.toLowerCase()]
+      return cn ? `${cn}${n}` : m
+    })
+    .replace(/@FirstFrame/gi, '首帧')
+    .replace(/@LastFrame/gi, '尾帧')
 }
 
 export function buildPayload(form, mode) {
