@@ -828,9 +828,9 @@ const MM_LIMITS = { image: 9, video: 3, audio: 3 }
 // 供 el-mention 下拉：已上传素材生成 @Image1 / @Video1 / @Audio1 选项
 const mentionOptions = computed(() => {
   const opts = []
-  form.refImages.forEach((_, i) => opts.push({ value: `Image${i + 1}`, label: `图片 ${i + 1}` }))
-  form.refVideos.forEach((_, i) => opts.push({ value: `Video${i + 1}`, label: `视频 ${i + 1}` }))
-  form.refAudios.forEach((_, i) => opts.push({ value: `Audio${i + 1}`, label: `音频 ${i + 1}` }))
+  form.refImages.forEach((_, i) => opts.push({ value: `Image${i + 1}`, label: `Image${i + 1}` }))
+  form.refVideos.forEach((_, i) => opts.push({ value: `Video${i + 1}`, label: `Video${i + 1}` }))
+  form.refAudios.forEach((_, i) => opts.push({ value: `Audio${i + 1}`, label: `Audio${i + 1}` }))
   return opts
 })
 
