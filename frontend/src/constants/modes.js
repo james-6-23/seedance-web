@@ -80,9 +80,6 @@ export const BEGINNER_FIELD_HINTS = {
   firstFrameUrl: '需要一张可公开访问的图片链接。右键图片 → 复制图片地址，或上传到图床后粘贴链接。',
   lastFrameUrl: '结束画面的图片链接，需与首帧风格相近，过渡会更自然。',
   refImageList: '可添加多张参考图，AI 会综合它们的风格与元素。',
-  refImageUrl: '人物或场景参考图，帮助 AI 理解你想要的视觉风格。',
-  refVideoUrl: '参考视频的动作、节奏或镜头运动（可选）。',
-  refAudioUrl: '参考背景音乐或音效氛围，需配合图片或视频一起使用。',
   imageRole: '「首帧」表示从这张图开始动起来；「参考图」表示借鉴其风格但不固定起始画面。',
 }
 

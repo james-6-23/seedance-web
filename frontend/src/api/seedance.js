@@ -149,10 +149,21 @@ export function findLastFrameUrl(data) {
 
 /* ----------------------------- 请求构建 ----------------------------- */
 
+// 把提示词里的 @Image1 / @Video2 / @Audio1 引用转成中文「图片1 / 视频2 / 音频1」，
+// 与 content 数组的顺序对应（官方指南示例即用「图片 N」指代）。
+export function resolveMentions(text) {
+  if (!text) return text
+  const map = { image: '图片', video: '视频', audio: '音频' }
+  return text.replace(/@(Image|Video|Audio)(\d+)/gi, (m, kind, n) => {
+    const cn = map[kind.toLowerCase()]
+    return cn ? `${cn}${n}` : m
+  })
+}
+
 export function buildPayload(form, mode) {
   const payload = {
     model: form.model,
-    prompt: (form.prompt || '').trim(),
+    prompt: resolveMentions((form.prompt || '').trim()),
     resolution: form.resolution,
     ratio: form.ratio,
     duration: parseInt(form.duration, 10) || 4,
@@ -199,37 +210,32 @@ export function buildPayload(form, mode) {
   }
 
   if (mode === 'multimodal') {
-    const img = (form.refImageUrl || '').trim()
-    const vid = (form.refVideoUrl || '').trim()
-    const aud = (form.refAudioUrl || '').trim()
-    if (!img && !vid) throw new Error('多模态模式至少需要参考图或参考视频')
-    if (aud && !img && !vid) throw new Error('音频不能单独使用，需配合参考图或视频')
+    // 支持多份素材：图片 ≤9、视频 ≤3、音频 ≤3
+    const images = (form.refImages || []).map((u) => (u.url || '').trim()).filter(Boolean)
+    const videos = (form.refVideos || []).map((u) => (u.url || '').trim()).filter(Boolean)
+    const audios = (form.refAudios || []).map((u) => (u.url || '').trim()).filter(Boolean)
+
+    if (!images.length && !videos.length) {
+      throw new Error('多模态模式至少需要一张参考图或一个参考视频')
+    }
+    if (audios.length && !images.length && !videos.length) {
+      throw new Error('音频不能单独使用，需配合参考图或视频')
+    }
+
     const content = []
-    if (img) {
-      content.push({
-        type: 'image_url',
-        role: 'reference_image',
-        image_url: { url: img },
-      })
-    }
-    if (vid) {
-      content.push({
-        type: 'video_url',
-        role: 'reference_video',
-        video_url: { url: vid },
-      })
-    }
-    if (aud) {
-      content.push({
-        type: 'audio_url',
-        role: 'reference_audio',
-        audio_url: { url: aud },
-      })
-    }
+    images.forEach((url) =>
+      content.push({ type: 'image_url', role: 'reference_image', image_url: { url } })
+    )
+    videos.forEach((url) =>
+      content.push({ type: 'video_url', role: 'reference_video', video_url: { url } })
+    )
+    audios.forEach((url) =>
+      content.push({ type: 'audio_url', role: 'reference_audio', audio_url: { url } })
+    )
     payload.content = content
-    if (img) payload.reference_image_urls = [img]
-    if (vid) payload.reference_video_urls = [vid]
-    if (aud) payload.audio_url = aud
+    if (images.length) payload.reference_image_urls = images
+    if (videos.length) payload.reference_video_urls = videos
+    if (audios.length) payload.audio_url = audios.length === 1 ? audios[0] : audios
   }
 
   return payload

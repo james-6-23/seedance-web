@@ -164,7 +164,19 @@
             <template #label>
               <span>{{ ui.isBeginner ? '③ 描述你想要的画面' : '提示词' }}</span>
             </template>
+            <el-mention
+              v-if="mode === 'multimodal'"
+              v-model="form.prompt"
+              :options="mentionOptions"
+              type="textarea"
+              :rows="ui.isBeginner ? 4 : 3"
+              :maxlength="PROMPT_MAX"
+              show-word-limit
+              whole
+              placeholder="输入 @ 引用上传的素材，例如 @Image1 作为首帧。描述你想生成的视频内容"
+            />
             <el-input
+              v-else
               v-model="form.prompt"
               type="textarea"
               :rows="ui.isBeginner ? 4 : 3"
@@ -275,31 +287,110 @@
             </el-form-item>
           </template>
 
-          <!-- 多模态 -->
+          <!-- 多模态：多素材 + @ 引用 -->
           <template v-else-if="mode === 'multimodal'">
-            <el-form-item :label="ui.isBeginner ? '参考图片（可选）' : '参考图 URL'" class="span-2">
-              <div class="url-with-upload">
-                <el-input v-model="form.refImageUrl" placeholder="https://example.com/portrait.png" />
-                <AssetUpload accept="image/*" v-model="form.refImageUrl" @uploaded="trackUpload" />
+            <!-- 参考图片 -->
+            <el-form-item class="span-2">
+              <template #label>
+                <span>参考图片 <span class="mm-count">{{ mmCounts.image }}/{{ MM_LIMITS.image }}</span></span>
+              </template>
+              <div class="mm-group">
+                <div v-for="(item, i) in form.refImages" :key="`img-${i}`" class="mm-item">
+                  <span class="mm-tag">@Image{{ i + 1 }}</span>
+                  <el-input v-model="item.url" placeholder="https://example.com/ref.png 或点击上传" />
+                  <AssetUpload
+                    accept="image/*"
+                    @uploaded="(url) => onMaterialUploaded('image', i, url)"
+                  />
+                  <el-button circle @click="removeMaterial('image', i)">
+                    <Icon icon="mingcute:close-line" width="16" height="16" />
+                  </el-button>
+                </div>
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="mmCounts.image >= MM_LIMITS.image"
+                  @click="addMaterial('image')"
+                >
+                  + 添加参考图
+                </el-button>
               </div>
-              <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refImageUrl }}</p>
             </el-form-item>
-            <el-form-item :label="ui.isBeginner ? '参考视频（可选）' : '参考视频 URL'" class="span-2">
-              <div class="url-with-upload">
-                <el-input v-model="form.refVideoUrl" placeholder="https://example.com/reference.mp4" />
-                <AssetUpload accept="video/*" v-model="form.refVideoUrl" @uploaded="trackUpload" />
+
+            <!-- 参考视频 -->
+            <el-form-item class="span-2">
+              <template #label>
+                <span>参考视频 <span class="mm-count">{{ mmCounts.video }}/{{ MM_LIMITS.video }}</span></span>
+              </template>
+              <div class="mm-group">
+                <div v-for="(item, i) in form.refVideos" :key="`vid-${i}`" class="mm-item">
+                  <span class="mm-tag">@Video{{ i + 1 }}</span>
+                  <el-input v-model="item.url" placeholder="https://example.com/ref.mp4 或点击上传" />
+                  <AssetUpload
+                    accept="video/*"
+                    @uploaded="(url) => onMaterialUploaded('video', i, url)"
+                  />
+                  <el-button circle @click="removeMaterial('video', i)">
+                    <Icon icon="mingcute:close-line" width="16" height="16" />
+                  </el-button>
+                </div>
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="mmCounts.video >= MM_LIMITS.video"
+                  @click="addMaterial('video')"
+                >
+                  + 添加参考视频
+                </el-button>
               </div>
-              <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refVideoUrl }}</p>
             </el-form-item>
-            <el-form-item
-              :label="ui.isBeginner ? '参考音频（可选，需配合图或视频）' : '参考音频 URL（需配合图或视频）'"
-              class="span-2"
-            >
-              <div class="url-with-upload">
-                <el-input v-model="form.refAudioUrl" placeholder="https://example.com/reference.mp3" />
-                <AssetUpload accept="audio/*" v-model="form.refAudioUrl" @uploaded="trackUpload" />
+
+            <!-- 参考音频 -->
+            <el-form-item class="span-2">
+              <template #label>
+                <span>参考音频 <span class="mm-count">{{ mmCounts.audio }}/{{ MM_LIMITS.audio }}</span> <span class="mm-hint-inline">需配合图或视频</span></span>
+              </template>
+              <div class="mm-group">
+                <div v-for="(item, i) in form.refAudios" :key="`aud-${i}`" class="mm-item">
+                  <span class="mm-tag">@Audio{{ i + 1 }}</span>
+                  <el-input v-model="item.url" placeholder="https://example.com/ref.mp3 或点击上传" />
+                  <AssetUpload
+                    accept="audio/*"
+                    @uploaded="(url) => onMaterialUploaded('audio', i, url)"
+                  />
+                  <el-button circle @click="removeMaterial('audio', i)">
+                    <Icon icon="mingcute:close-line" width="16" height="16" />
+                  </el-button>
+                </div>
+                <el-button
+                  text
+                  type="primary"
+                  :disabled="mmCounts.audio >= MM_LIMITS.audio"
+                  @click="addMaterial('audio')"
+                >
+                  + 添加参考音频
+                </el-button>
               </div>
-              <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.refAudioUrl }}</p>
+            </el-form-item>
+
+            <!-- 多重参考指南 -->
+            <el-form-item class="span-2">
+              <div class="mm-guide">
+                <div class="mm-guide-title">
+                  <Icon icon="mingcute:information-line" width="16" height="16" />
+                  <span>多重参考指南</span>
+                </div>
+                <p class="mm-guide-tip">
+                  在提示词中输入 <code>@</code> 可快速插入已上传的素材引用（如
+                  <code>@Image1</code>、<code>@Video1</code>、<code>@Audio1</code>），
+                  让 AI 明确知道使用哪份素材。提交时会自动转为「图片1 / 视频1 / 音频1」。
+                </p>
+                <ul class="mm-guide-list">
+                  <li>最多 9 张参考图、3 个参考视频、3 个参考音频</li>
+                  <li>视频 / 音频总时长建议 ≤ 15 秒</li>
+                  <li>音频不能单独使用，至少需要一张图片或一个视频</li>
+                </ul>
+              </div>
             </el-form-item>
           </template>
         </div>
@@ -672,9 +763,9 @@ const form = reactive({
   lastFrameUrl: '',
   returnLastFrame: false,
   refImageList: [''],
-  refImageUrl: '',
-  refVideoUrl: '',
-  refAudioUrl: '',
+  refImages: [],
+  refVideos: [],
+  refAudios: [],
 })
 
 // 本次会话内上传到自建图床的素材 URL，生成结束后统一销毁
@@ -728,6 +819,46 @@ function removeRefImage(i) {
   if (form.refImageList.length > 1) form.refImageList.splice(i, 1)
 }
 
+/* --------------------- 多模态：多素材 + @ 引用 --------------------- */
+
+const MM_LIMITS = { image: 9, video: 3, audio: 3 }
+
+// 供 el-mention 下拉：已上传素材生成 @Image1 / @Video1 / @Audio1 选项
+const mentionOptions = computed(() => {
+  const opts = []
+  form.refImages.forEach((_, i) => opts.push({ value: `Image${i + 1}`, label: `图片 ${i + 1}` }))
+  form.refVideos.forEach((_, i) => opts.push({ value: `Video${i + 1}`, label: `视频 ${i + 1}` }))
+  form.refAudios.forEach((_, i) => opts.push({ value: `Audio${i + 1}`, label: `音频 ${i + 1}` }))
+  return opts
+})
+
+const mmCounts = computed(() => ({
+  image: form.refImages.length,
+  video: form.refVideos.length,
+  audio: form.refAudios.length,
+}))
+
+function addMaterial(kind) {
+  const list = { image: form.refImages, video: form.refVideos, audio: form.refAudios }[kind]
+  if (list.length >= MM_LIMITS[kind]) {
+    ElMessage.warning(`最多 ${MM_LIMITS[kind]} 个`)
+    return
+  }
+  list.push({ url: '' })
+}
+
+function removeMaterial(kind, i) {
+  const list = { image: form.refImages, video: form.refVideos, audio: form.refAudios }[kind]
+  list.splice(i, 1)
+}
+
+// 上传成功后填入对应素材槽的 url
+function onMaterialUploaded(kind, i, url) {
+  const list = { image: form.refImages, video: form.refVideos, audio: form.refAudios }[kind]
+  if (list[i]) list[i].url = url
+  trackUpload(url)
+}
+
 function snapshotForm() {
   return {
     mode: mode.value,
@@ -744,9 +875,9 @@ function snapshotForm() {
       lastFrameUrl: form.lastFrameUrl,
       returnLastFrame: form.returnLastFrame,
       refImageList: [...form.refImageList],
-      refImageUrl: form.refImageUrl,
-      refVideoUrl: form.refVideoUrl,
-      refAudioUrl: form.refAudioUrl,
+      refImages: form.refImages.map((x) => ({ ...x })),
+      refVideos: form.refVideos.map((x) => ({ ...x })),
+      refAudios: form.refAudios.map((x) => ({ ...x })),
     },
   }
 }
@@ -759,6 +890,9 @@ function applyRestoreDraft() {
   if (Array.isArray(draft.form.refImageList)) {
     form.refImageList = [...draft.form.refImageList]
   }
+  form.refImages = (draft.form.refImages || []).map((x) => ({ ...x }))
+  form.refVideos = (draft.form.refVideos || []).map((x) => ({ ...x }))
+  form.refAudios = (draft.form.refAudios || []).map((x) => ({ ...x }))
   ElNotification.success({
     title: '参数已填入',
     message: '可在本页修改后提交',
@@ -1696,6 +1830,90 @@ watch(isFast, onModelChange)
 
 .url-with-upload .el-input {
   flex: 1;
+}
+
+/* 多模态：多素材分组 + @ 引用 */
+.mm-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.mm-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mm-item .el-input {
+  flex: 1;
+}
+
+.mm-tag {
+  flex-shrink: 0;
+  min-width: 64px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  color: var(--el-color-primary);
+  background: var(--nav-active-bg);
+  border: 1px solid var(--nav-active-border);
+}
+
+.mm-count {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-weight: 400;
+}
+
+.mm-hint-inline {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+
+.mm-guide {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--soft-fill);
+  border: 1px solid var(--glass-border);
+}
+
+.mm-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.mm-guide-tip {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--el-text-color-regular);
+}
+
+.mm-guide-tip code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--el-fill-color-light);
+  color: var(--el-color-primary);
+}
+
+.mm-guide-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--el-text-color-secondary);
 }
 
 /* 状态面板 */
