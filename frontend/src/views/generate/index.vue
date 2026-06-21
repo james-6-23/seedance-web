@@ -1985,12 +1985,15 @@ watch(isFast, onModelChange)
 
 .mm-tag {
   flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
-  text-align: center;
-  padding: 2px 6px;
-  border-radius: 5px;
+  padding: 0 6px;
+  border-radius: 6px;
   font-family: "SFMono-Regular", Menlo, monospace;
   color: var(--el-color-primary);
   background: var(--nav-active-bg);
