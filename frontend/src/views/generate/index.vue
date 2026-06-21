@@ -1990,9 +1990,9 @@ watch(isFast, onModelChange)
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 0 5px;
   border-radius: 6px;
   font-family: "SFMono-Regular", Menlo, monospace;
   color: var(--el-color-primary);
