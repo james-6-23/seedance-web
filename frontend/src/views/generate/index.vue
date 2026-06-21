@@ -210,6 +210,14 @@
                   v-model="form.firstFrameUrl"
                   @uploaded="trackUpload"
                 />
+                <el-button
+                  v-if="form.firstFrameUrl"
+                  circle
+                  title="清空"
+                  @click="clearField('firstFrameUrl')"
+                >
+                  <Icon icon="mingcute:close-line" width="16" height="16" />
+                </el-button>
               </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.firstFrameUrl }}</p>
             </el-form-item>
@@ -235,6 +243,14 @@
                 <span class="mm-tag">@FirstFrame</span>
                 <el-input v-model="form.firstFrameUrl" placeholder="https://example.com/start.png" />
                 <AssetUpload accept="image/*" v-model="form.firstFrameUrl" @uploaded="trackUpload" />
+                <el-button
+                  v-if="form.firstFrameUrl"
+                  circle
+                  title="清空"
+                  @click="clearField('firstFrameUrl')"
+                >
+                  <Icon icon="mingcute:close-line" width="16" height="16" />
+                </el-button>
               </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.firstFrameUrl }}</p>
             </el-form-item>
@@ -243,6 +259,14 @@
                 <span class="mm-tag">@LastFrame</span>
                 <el-input v-model="form.lastFrameUrl" placeholder="https://example.com/end.png" />
                 <AssetUpload accept="image/*" v-model="form.lastFrameUrl" @uploaded="trackUpload" />
+                <el-button
+                  v-if="form.lastFrameUrl"
+                  circle
+                  title="清空"
+                  @click="clearField('lastFrameUrl')"
+                >
+                  <Icon icon="mingcute:close-line" width="16" height="16" />
+                </el-button>
               </div>
               <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.lastFrameUrl }}</p>
             </el-form-item>
@@ -834,6 +858,13 @@ function applyPromptExample(text) {
 
 function removeRefImage(i) {
   if (form.refImageList.length > 1) form.refImageList.splice(i, 1)
+}
+
+// 清空单个 URL 字段（首帧/尾帧）；若该值是上传到 R2 的文件则一并销毁
+function clearField(key) {
+  const url = form[key]
+  if (url) discardAsset(url)
+  form[key] = ''
 }
 
 // 多图参考：是否有已填写/上传的参考图
