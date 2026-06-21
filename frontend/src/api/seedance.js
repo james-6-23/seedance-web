@@ -159,6 +159,8 @@ export function buildPayload(form, mode) {
     generate_audio: form.generateAudio,
     watermark: form.watermark,
   }
+  // 返回尾帧图：适用于所有生成模式，便于把视频最后一帧用作下一段首帧
+  if (form.returnLastFrame) payload.return_last_frame = true
 
   if (mode === 'first_frame') {
     const url = (form.firstFrameUrl || '').trim()
@@ -183,7 +185,6 @@ export function buildPayload(form, mode) {
     ]
     payload.first_frame_url = first
     payload.last_frame_url = last
-    if (form.returnLastFrame) payload.return_last_frame = true
   }
 
   if (mode === 'multi_image') {

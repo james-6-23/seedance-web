@@ -321,17 +321,20 @@
               <span class="option-card-desc">{{ BEGINNER_OPTION_HINTS.watermark.desc }}</span>
             </div>
           </div>
+          <div class="option-card">
+            <el-switch v-model="form.returnLastFrame" />
+            <div class="option-card-text">
+              <span class="option-card-title">{{ BEGINNER_OPTION_HINTS.returnLastFrame.title }}</span>
+              <span class="option-card-desc">{{ BEGINNER_OPTION_HINTS.returnLastFrame.desc }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- 专业：简洁开关 -->
         <div v-else class="options">
           <el-switch v-model="form.generateAudio" active-text="生成音频" />
           <el-switch v-model="form.watermark" active-text="添加水印" />
-          <el-switch
-            v-if="mode === 'first_last'"
-            v-model="form.returnLastFrame"
-            active-text="返回尾帧图"
-          />
+          <el-switch v-model="form.returnLastFrame" active-text="返回尾帧图" />
         </div>
 
         <div v-if="ui.isPro" class="actions">

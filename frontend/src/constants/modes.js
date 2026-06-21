@@ -108,6 +108,7 @@ export const RESOLUTION_LABELS = {
 export const BEGINNER_OPTION_HINTS = {
   generateAudio: { title: '生成音频', desc: '为视频配上 AI 生成的背景音乐或环境音' },
   watermark: { title: '添加水印', desc: '在视频角落显示平台水印，正式作品可关闭' },
+  returnLastFrame: { title: '返回尾帧图', desc: '生成完额外返回视频最后一帧，可用作下一段的首帧接着生成' },
 }
 
 /** 新手模式：提示词写作技巧 */
