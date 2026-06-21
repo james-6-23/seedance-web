@@ -11,7 +11,7 @@ export const menuRoutes = [
   {
     path: 'guide',
     name: 'guide',
-    meta: { title: '提示词指南', icon: 'mingcute:magic-line' },
+    meta: { title: '提示词指南', icon: 'mingcute:magic-2-line' },
     component: () => import('@/views/guide/index.vue'),
   },
   {
