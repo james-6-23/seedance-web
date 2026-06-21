@@ -621,7 +621,13 @@
         </template>
       </div>
 
-      <!-- 原始响应 -->
+      <!-- 请求 / 原始响应 -->
+      <el-collapse v-if="ui.isPro && requestJson" class="block">
+        <el-collapse-item title="查看请求 JSON">
+          <pre class="raw">{{ requestJson }}</pre>
+        </el-collapse-item>
+      </el-collapse>
+
       <el-collapse v-if="ui.isPro && rawJson" class="block">
         <el-collapse-item title="查看原始响应 JSON">
           <pre class="raw">{{ rawJson }}</pre>
@@ -952,6 +958,7 @@ const videoUrl = ref('')
 const lastFrameUrl = ref('')
 const tokens = ref(0)
 const rawJson = ref('')
+const requestJson = ref('')
 const logs = ref([])
 const logBox = ref(null)
 const liveLogBox = ref(null)
@@ -1212,12 +1219,14 @@ async function handleGenerate() {
   error.value = null
   errorHttp.value = null
   rawJson.value = ''
+  requestJson.value = ''
   logs.value = []
   setPoll('—')
 
   let payload
   try {
     payload = buildPayload(form, mode.value)
+    requestJson.value = JSON.stringify(payload, null, 2)
   } catch (err) {
     appendLog(`参数错误: ${err.message}`, 'error', err.message)
     setStatus('error', '参数错误', err.message)
