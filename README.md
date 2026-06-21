@@ -12,7 +12,9 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/james-6-23/seedance-web)
 
-点击按钮，Cloudflare 会把本仓库克隆到你的 GitHub 账户、自动构建前端并部署，**全程零配置**（无需绑定任何资源）。部署完成后打开「API 配置」填入你的 API Key 即可使用。
+点击按钮，Cloudflare 会把本仓库克隆到你的 GitHub 账户、自动构建前端并部署，**核心功能全程零配置**（无需绑定任何资源）。部署完成后打开「API 配置」填入你的 API Key 即可使用。
+
+> 若想额外启用「本地上传参考图/视频」，需绑定一个 R2 存储桶，见 [📦 临时图床（R2）部署](#-临时图床r2部署)。
 
 ---
 
@@ -33,7 +35,7 @@
 | 层 | 技术 |
 |---|---|
 | 前端 | Vue 3、Vue Router、Pinia（持久化）、Element Plus、Vite |
-| 后端 | Cloudflare Worker（静态资源 `[assets]` 绑定 + `/proxy` 反向代理）|
+| 后端 | Cloudflare Worker（静态资源 `[assets]` 绑定 + `/proxy` 反向代理 + `/upload` R2 临时图床）|
 | 本地预览 | Vite Dev Server / Wrangler / `server.py`（Python 标准库）|
 
 ---
@@ -50,8 +52,8 @@ seedance-web/
 │   │   ├── views/         # generate / history / config / docs / about
 │   │   └── style.css      # 主题变量（明暗双主题）
 │   └── vite.config.js     # 构建输出到 ../public
-├── src/index.js           # Cloudflare Worker：静态托管 + /proxy 反代
-├── wrangler.toml          # Worker 配置（[assets] + [build] 自动构建前端）
+├── src/index.js           # Cloudflare Worker：静态托管 + /proxy 反代 + /upload R2 图床
+├── wrangler.toml          # Worker 配置（[assets] + [build] + R2 / 限频绑定）
 ├── server.py              # 可选：纯静态本地预览 + 代理（Python）
 └── public/                # 构建产物（自动生成，已 gitignore）
 ```
@@ -81,7 +83,9 @@ npx wrangler dev     # → http://localhost:8787，会自动构建前端
 
 ## ☁️ 部署到 Cloudflare
 
-本项目**无需绑定任何资源**（没有数据库/KV/R2/密钥），唯一的绑定是静态资源 `[assets]`，已在 `wrangler.toml` 配好。
+核心功能（文生/图生/多模态视频生成）**无需绑定任何资源**，唯一必需的绑定是静态资源 `[assets]`，已在 `wrangler.toml` 配好。
+
+> 若要启用「**本地上传参考图/视频**」功能（把文件传到自建图床再喂给生成），需要额外开通并绑定一个 R2 存储桶，详见下方 [📦 临时图床（R2）部署](#-临时图床r2部署)。不绑定也能正常用，用户仍可手动粘贴外部图片/视频 URL。
 
 ### 方式 A：命令行
 
@@ -101,6 +105,52 @@ npx wrangler deploy   # 自动构建前端 + 上传
 4. 创建后，每次 `git push` 到 `main` 自动重新部署
 
 > `npx wrangler deploy` 会触发 `wrangler.toml` 里的 `[build]` 钩子自动构建前端，Cloudflare 端无需额外配置。
+
+---
+
+## 📦 临时图床（R2）部署
+
+「本地上传参考素材」功能的工作流程是：用户上传图片/视频 → 暂存到你自己的 R2 桶 → Worker 返回一个 `https://你的域名/files/<随机key>` 的链接 → 填入生成请求供 Seedance 后端拉取 → **任务结束后自动销毁**。文件始终存在你自己账号的私有桶里，桶**无需公开**（由 Worker 的 `/files/` 路由代理读取）。
+
+相关绑定已写在 `wrangler.toml` 中，部署时 Cloudflare 会自动应用——你只需在自己账号里准备好同名资源：
+
+| 绑定 | 名称 | 用途 | 是否需手动准备 |
+| ---- | ---- | ---- | :--: |
+| R2 存储桶 | `UPLOADS` → 桶 `seedance-uploads` | 暂存上传的参考图/视频/音频 | ✅ 需先创建同名桶 |
+| 速率限制器 | `UPLOAD_LIMITER`（每 IP 60s / 20 次） | 防止 `/upload` 被刷流量 | ❌ 部署时自动创建 |
+
+### 步骤一：开通 R2
+
+进入 [Cloudflare Dashboard](https://dash.cloudflare.com) → **R2 Object Storage** → 点击 **Enable / 开通**。
+
+> 开通需绑定支付方式，但 R2 有永久免费额度（10GB 存储 + 每月 100 万次写 / 1000 万次读，**出站流量免费**），临时图床用量极小，正常不会产生费用。
+
+### 步骤二：创建存储桶（Web 端）
+
+R2 页面点击 **Create bucket / 创建存储桶**，桶名填写 **`seedance-uploads`**（必须与 `wrangler.toml` 里的 `bucket_name` 一致）。
+
+- 想用别的桶名：改 `wrangler.toml` 中 `[[r2_buckets]]` 的 `bucket_name` 即可，绑定名 `UPLOADS` 不用动。
+- 桶**保持私有**即可，无需开启 Public Access 或 `r2.dev` 公开域名。
+
+命令行等价操作：
+
+```bash
+npx wrangler r2 bucket create seedance-uploads
+```
+
+### 步骤三：部署
+
+正常 `git push` 触发自动部署（或 `npx wrangler deploy`）。Cloudflare 会读取 `wrangler.toml`，自动把 `UPLOADS`、`UPLOAD_LIMITER` 两个绑定挂到 Worker 上。
+
+### 步骤四（推荐）：设置生命周期兜底清理
+
+前端在任务结束后会即时调 `/delete` 销毁临时文件；但为防止用户中途关闭页面导致漏删，建议加一条「1 天后自动过期」规则兜底（此规则**不随代码部署**，需单独设置）：
+
+```bash
+npx wrangler r2 bucket lifecycle add seedance-uploads --name expire-1d --expire-days 1
+```
+
+也可在 Web 端 R2 桶的 **Settings → Object lifecycle rules** 里添加同样的规则。
 
 ---
 
