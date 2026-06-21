@@ -9,6 +9,12 @@ export const menuRoutes = [
     component: () => import('@/views/generate/index.vue'),
   },
   {
+    path: 'guide',
+    name: 'guide',
+    meta: { title: '提示词指南', icon: 'mingcute:magic-line' },
+    component: () => import('@/views/guide/index.vue'),
+  },
+  {
     path: 'history',
     name: 'history',
     meta: { title: '历史记录', icon: 'mingcute:history-line' },
