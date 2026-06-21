@@ -478,6 +478,32 @@
           <video :src="videoUrl" controls playsinline class="player"></video>
         </div>
 
+        <!-- 尾帧图：API 返回 return_last_frame 时展示 -->
+        <div v-if="lastFrameUrl" class="last-frame">
+          <div class="last-frame-info">
+            <img :src="lastFrameUrl" class="last-frame-thumb" alt="尾帧图" />
+            <div class="last-frame-text">
+              <span class="last-frame-title">视频尾帧图</span>
+              <span class="last-frame-desc">可用作下一段视频的首帧，实现连续接帧</span>
+            </div>
+          </div>
+          <div class="last-frame-actions">
+            <el-button type="primary" size="small" @click="useLastFrameAsFirst">
+              用作下一段首帧
+            </el-button>
+            <el-button size="small" @click="copy(lastFrameUrl)">复制链接</el-button>
+            <el-button
+              size="small"
+              tag="a"
+              :href="lastFrameUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              新窗口打开
+            </el-button>
+          </div>
+        </div>
+
         <template v-if="ui.isBeginner">
           <div class="result-actions">
             <el-button type="primary" tag="a" :href="videoUrl" target="_blank" rel="noopener noreferrer">
@@ -588,6 +614,7 @@ import {
   createTask,
   queryTask,
   findVideoUrl,
+  findLastFrameUrl,
   parseErrorPayload,
   formatErrorForLog,
   ApiError,
@@ -659,6 +686,15 @@ function cleanupUploads() {
   const urls = [...uploadedAssets.value]
   uploadedAssets.value.clear()
   urls.forEach((u) => deleteAsset(u))
+}
+
+// 把生成视频的尾帧图用作下一段视频的首帧，便于连续接帧
+function useLastFrameAsFirst() {
+  if (!lastFrameUrl.value) return
+  mode.value = 'first_frame'
+  form.firstFrameUrl = lastFrameUrl.value
+  form.imageRole = 'first_frame'
+  ElMessage.success('已将尾帧填入首帧，可继续生成下一段')
 }
 
 const isFast = computed(() => form.model === MODEL_FAST)
@@ -752,6 +788,7 @@ const pollLevel = ref('warn')
 const error = ref(null)
 const errorHttp = ref(null)
 const videoUrl = ref('')
+const lastFrameUrl = ref('')
 const tokens = ref(0)
 const rawJson = ref('')
 const logs = ref([])
@@ -883,6 +920,7 @@ function pollTask(id) {
 
         if (SUCCESS_STATUSES.has(st)) {
           const url = findVideoUrl(result)
+          const lastFrame = findLastFrameUrl(result)
           const tk = result.metadata?.total_tokens
           setPoll(`${label} · 100%`, 'success')
           appendLog(
@@ -891,6 +929,7 @@ function pollTask(id) {
             tk ? `视频生成完成，消耗 ${tk} tokens` : '视频生成完成'
           )
           if (url) appendLog(`视频链接: ${url}`, 'success', '视频已就绪，可以预览和下载')
+          if (lastFrame) appendLog(`尾帧图: ${lastFrame}`, 'success', '已返回视频尾帧图')
           setStatus(
             'success',
             '生成完成',
@@ -902,6 +941,7 @@ function pollTask(id) {
             videoUrl.value = url
             tokens.value = tk || 0
           }
+          if (lastFrame) lastFrameUrl.value = lastFrame
           if (currentHistoryId.value) {
             history.updateRecord(currentHistoryId.value, {
               status: 'completed',
@@ -1005,6 +1045,7 @@ async function handleGenerate() {
   stopPoll()
   currentHistoryId.value = ''
   videoUrl.value = ''
+  lastFrameUrl.value = ''
   tokens.value = 0
   taskId.value = ''
   error.value = null
@@ -1809,6 +1850,55 @@ watch(isFast, onModelChange)
 .result-actions {
   display: flex;
   gap: 12px;
+}
+
+.last-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--soft-fill);
+}
+
+.last-frame-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.last-frame-thumb {
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #000;
+  flex-shrink: 0;
+}
+
+.last-frame-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.last-frame-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.last-frame-desc {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.last-frame-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .raw {

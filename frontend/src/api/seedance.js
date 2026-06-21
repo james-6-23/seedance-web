@@ -118,6 +118,35 @@ export function findVideoUrl(data) {
   return null
 }
 
+// 提取尾帧图 URL：网关响应字段名不固定（last_frame_url / last_frame_image_url …），
+// 递归查找任何「键名含 last_frame 且值为 http 链接」的字段。
+export function findLastFrameUrl(data) {
+  if (!data || typeof data !== 'object') return null
+
+  for (const [key, val] of Object.entries(data)) {
+    if (
+      /last_?frame/i.test(key) &&
+      typeof val === 'string' &&
+      val.startsWith('http')
+    ) {
+      return val
+    }
+    // 形如 { last_frame: { url: '...' } } 或 { last_frame_image: { image_url: {...} } }
+    if (/last_?frame/i.test(key) && val && typeof val === 'object') {
+      const nested = findVideoUrl(val) // 复用：找内部任意 url 字段
+      if (nested) return nested
+    }
+  }
+
+  for (const val of Object.values(data)) {
+    if (val && typeof val === 'object') {
+      const found = findLastFrameUrl(val)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 /* ----------------------------- 请求构建 ----------------------------- */
 
 export function buildPayload(form, mode) {
