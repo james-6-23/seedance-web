@@ -1976,6 +1976,7 @@ watch(isFast, onModelChange)
   display: flex;
   gap: 8px;
   align-items: center;
+  width: 100%;
 }
 
 .mm-item .el-input {
