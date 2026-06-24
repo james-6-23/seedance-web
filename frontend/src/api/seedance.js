@@ -1,11 +1,56 @@
 import { useConfigStore } from '@/store/config'
 
+// tier 决定能力（分辨率上限/时长）：standard 支持 1080p，fast / mini 封顶 720p。
+// group 仅用于下拉分组展示（国内为豆包域、海外为 Dreamina 低审查域）。
+export const MODELS = [
+  { id: 'doubao-seedance-2-0-260128', tag: '标准版', hint: '画质好，适合正式作品', group: '国内', tier: 'standard' },
+  { id: 'doubao-seedance-2-0-fast-260128', tag: '快速版', hint: '出片快，适合试效果', group: '国内', tier: 'fast' },
+  { id: 'dreamina-seedance-2-0-260128', tag: '标准版·海外', hint: '画质好，海外节点（低审查）', group: '海外', tier: 'standard' },
+  { id: 'dreamina-seedance-2-0-fast-260128', tag: '快速版·海外', hint: '出片快，海外节点（低审查）', group: '海外', tier: 'fast' },
+  { id: 'dreamina-seedance-2-0-mini-260615', tag: '迷你版·海外', hint: '更省更快，海外节点（低审查）', group: '海外', tier: 'mini' },
+]
+
+export const MODEL_META = Object.fromEntries(MODELS.map((m) => [m.id, m]))
+
+// 按 group 归类，供下拉的 el-option-group 使用（保持 MODELS 中的出现顺序）
+export const MODEL_GROUPS = MODELS.reduce((groups, m) => {
+  const g = groups.find((x) => x.label === m.group)
+  if (g) g.models.push(m)
+  else groups.push({ label: m.group, models: [m] })
+  return groups
+}, [])
+
+// 默认模型：国内快速版
 export const MODEL_FAST = 'doubao-seedance-2-0-fast-260128'
 export const MODEL_STANDARD = 'doubao-seedance-2-0-260128'
 
-export const MODEL_META = {
-  [MODEL_FAST]: { tag: '快速版', hint: '出片快，适合试效果' },
-  [MODEL_STANDARD]: { tag: '标准版', hint: '画质好，适合正式作品' },
+export function getModelMeta(model) {
+  return MODEL_META[model] || null
+}
+
+export function getModelKeyGroup(model) {
+  return MODEL_META[model]?.group === '海外' ? 'overseas' : 'domestic'
+}
+
+export function formatModelKeyGroup(model) {
+  return getModelKeyGroup(model) === 'overseas'
+    ? '海外 API Key（dreamina 分组）'
+    : '国内 API Key（seedance 分组）'
+}
+
+export function getApiKeyForModel(model, config = useConfigStore()) {
+  return getModelKeyGroup(model) === 'overseas'
+    ? config.overseasKey
+    : config.domesticKey
+}
+
+export function hasApiKeyForModel(model, config = useConfigStore()) {
+  return !!getApiKeyForModel(model, config)
+}
+
+// standard 档支持 1080p，其余（fast / mini）封顶 720p
+export function isStandardTier(model) {
+  return MODEL_META[model]?.tier === 'standard'
 }
 
 export function formatModelLabel(model, { beginner = false } = {}) {
@@ -252,12 +297,13 @@ function raiseApiError(data, status) {
   throw new ApiError(parsed.primaryMessage, { data, status, parsed })
 }
 
-async function apiRequest(method, path, body) {
+async function apiRequest(method, path, body, { model } = {}) {
   const config = useConfigStore()
   const base = config.base
-  const key = config.key
+  const requestModel = model || body?.model
+  const key = getApiKeyForModel(requestModel, config)
   if (!base) throw new Error('请填写 API 地址')
-  if (!key) throw new Error('请填写 API Key')
+  if (!key) throw new Error(`请填写${formatModelKeyGroup(requestModel)}`)
 
   const opts = {
     method,
@@ -302,12 +348,12 @@ async function apiRequest(method, path, body) {
 
 export function createTask(payload) {
   const config = useConfigStore()
-  return apiRequest('POST', config.path, payload)
+  return apiRequest('POST', config.path, payload, { model: payload?.model })
 }
 
-export function queryTask(taskId) {
+export function queryTask(taskId, model) {
   const config = useConfigStore()
-  return apiRequest('GET', `${config.path}/${taskId}`)
+  return apiRequest('GET', `${config.path}/${taskId}`, null, { model })
 }
 
 /* --------------------- 临时图床（同源 Worker 接口）--------------------- */

@@ -9,6 +9,9 @@ export const useConfigStore = defineStore('config', {
   state: () => ({
     apiBase: 'https://ai.centos.hk',
     apiPath: '/v1/videos',
+    domesticApiKey: '',
+    overseasApiKey: '',
+    // Legacy: older versions stored the domestic seedance key here.
     apiKey: '',
     // 本地默认走代理解决跨域；线上默认直连，可在「API 配置」里开启
     useProxy: isLocalHost(),
@@ -24,8 +27,14 @@ export const useConfigStore = defineStore('config', {
       if (!p.startsWith('/')) p = `/${p}`
       return p.replace(/\/+$/, '')
     },
+    domesticKey(state) {
+      return (state.domesticApiKey || state.apiKey || '').trim()
+    },
+    overseasKey(state) {
+      return state.overseasApiKey.trim()
+    },
     key(state) {
-      return state.apiKey.trim()
+      return (state.domesticApiKey || state.apiKey || '').trim()
     },
   },
   persist: true,

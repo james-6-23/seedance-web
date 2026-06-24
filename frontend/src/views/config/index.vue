@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-head">
           <span class="card-title">API 配置</span>
-          <span class="card-hint">填写星辰网关地址与 API Key，配置自动保存在浏览器本地</span>
+          <span class="card-hint">填写星辰网关地址与国内 / 海外 API Key，配置自动保存在浏览器本地</span>
         </div>
       </template>
 
@@ -24,7 +24,7 @@
         <el-form-item>
           <template #label>
             <span class="key-label">
-              API Key（需 seedance 分组）
+              国内 API Key（需 seedance 分组）
               <a
                 class="key-link"
                 href="https://ai.centos.hk/console/token"
@@ -37,7 +37,31 @@
             </span>
           </template>
           <el-input
-            v-model="config.apiKey"
+            v-model="domesticApiKeyInput"
+            type="password"
+            show-password
+            placeholder="sk-..."
+            spellcheck="false"
+          />
+        </el-form-item>
+
+        <el-form-item>
+          <template #label>
+            <span class="key-label">
+              海外 API Key（需 dreamina 分组）
+              <a
+                class="key-link"
+                href="https://ai.centos.hk/console/token"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                前往创建 Key
+                <Icon icon="mingcute:external-link-line" width="14" height="14" />
+              </a>
+            </span>
+          </template>
+          <el-input
+            v-model="config.overseasApiKey"
             type="password"
             show-password
             placeholder="sk-..."
@@ -71,10 +95,18 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useConfigStore } from '@/store/config'
 
 const config = useConfigStore()
+const domesticApiKeyInput = computed({
+  get: () => config.domesticApiKey || config.apiKey,
+  set: (value) => {
+    config.domesticApiKey = value
+    config.apiKey = value
+  },
+})
 </script>
 
 <style scoped>

@@ -384,6 +384,11 @@ html.dark {
   border: 1px solid var(--glass-border) !important;
 }
 
+/* Keep select menus below the sticky topbar, whose z-index is 10. */
+.el-popper.el-select__popper {
+  z-index: 8 !important;
+}
+
 /* ============================== 主题切换动画 ============================== */
 html.theme-transition,
 html.theme-transition *,

@@ -20,9 +20,9 @@
       :closable="false"
       show-icon
       class="config-alert"
-      title="请先配置 API Key"
-      description="生成视频前需要填写网关地址与 API Key。"
+      :title="`请先配置${requiredApiKeyLabel}`"
     >
+      <span>{{ currentModelGroupLabel }}模型需要使用对应分组的 API Key。</span>
       <router-link to="/config" class="alert-link">前往 API 配置</router-link>
     </el-alert>
 
@@ -117,14 +117,18 @@
         <div class="grid" :class="{ 'grid-beginner': ui.isBeginner }">
           <el-form-item label="模型">
             <el-select v-model="form.model" @change="onModelChange">
-              <el-option
-                :label="formatModelLabel(MODEL_FAST, { beginner: ui.isBeginner })"
-                :value="MODEL_FAST"
-              />
-              <el-option
-                :label="formatModelLabel(MODEL_STANDARD, { beginner: ui.isBeginner })"
-                :value="MODEL_STANDARD"
-              />
+              <el-option-group
+                v-for="g in MODEL_GROUPS"
+                :key="g.label"
+                :label="g.label"
+              >
+                <el-option
+                  v-for="m in g.models"
+                  :key="m.id"
+                  :label="formatModelLabel(m.id, { beginner: ui.isBeginner })"
+                  :value="m.id"
+                />
+              </el-option-group>
             </el-select>
             <p v-if="ui.isBeginner" class="field-hint">{{ BEGINNER_FIELD_HINTS.model }}</p>
           </el-form-item>
@@ -740,7 +744,10 @@ import {
 } from '@/constants/modes'
 import {
   MODEL_FAST,
-  MODEL_STANDARD,
+  MODEL_GROUPS,
+  formatModelKeyGroup,
+  hasApiKeyForModel,
+  isStandardTier,
   formatModelLabel,
   SUCCESS_STATUSES,
   buildPayload,
@@ -768,8 +775,6 @@ const VIEW_MODES = [
 const PROMPT_MAX = 500
 const RATIOS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9', 'adaptive']
 const DURATIONS = [4, 5, 6, 8, 10, 12, 15]
-
-const missingApiKey = computed(() => !config.key)
 
 const showAdvancedModes = ref(false)
 
@@ -807,6 +812,12 @@ const form = reactive({
   refAudios: [],
 })
 
+const requiredApiKeyLabel = computed(() => formatModelKeyGroup(form.model))
+const currentModelGroupLabel = computed(() =>
+  requiredApiKeyLabel.value.startsWith('海外') ? '海外' : '国内'
+)
+const missingApiKey = computed(() => !hasApiKeyForModel(form.model, config))
+
 // 本次会话内上传到自建图床的素材 URL
 const uploadedAssets = ref(new Set())
 
@@ -832,7 +843,8 @@ function useLastFrameAsFirst() {
   ElMessage.success('已将尾帧填入首帧，可继续生成下一段')
 }
 
-const isFast = computed(() => form.model === MODEL_FAST)
+// isFast 表示「720p 封顶」的档位（fast / mini）；standard 档支持 1080p
+const isFast = computed(() => !isStandardTier(form.model))
 const resolutions = computed(() => (isFast.value ? ['480p', '720p'] : ['480p', '720p', '1080p']))
 const resolutionLabel = computed(() =>
   isFast.value ? '分辨率（快速版最高 720p）' : '分辨率（标准版支持 1080p）'
@@ -1158,7 +1170,7 @@ const STATUS_LABELS = {
 
 const POLL_INTERVAL_MS = 5000
 
-function pollTask(id) {
+function pollTask(id, model) {
   pollAborted = false
   let attempt = 0
   const maxAttempts = 60
@@ -1168,7 +1180,7 @@ function pollTask(id) {
     async function tick() {
       if (pollAborted) return reject(new Error('已取消轮询'))
       try {
-        const result = await queryTask(id)
+        const result = await queryTask(id, model)
         rawJson.value = JSON.stringify(result, null, 2)
 
         const st = (result.status || '').toLowerCase()
@@ -1330,8 +1342,8 @@ async function handleGenerate() {
     return
   }
 
-  if (ui.isBeginner && missingApiKey.value) {
-    ElMessage.warning('请先配置 API Key')
+  if (missingApiKey.value) {
+    ElMessage.warning(`请先配置${requiredApiKeyLabel.value}`)
     return
   }
 
@@ -1368,7 +1380,7 @@ async function handleGenerate() {
     appendLog(`初始状态: ${createRes.status || 'queued'} · 开始轮询…`, 'info', '开始跟踪生成进度')
     setStatus('queued', '任务已提交', `Task ID: ${id}`, 0)
 
-    await pollTask(id)
+    await pollTask(id, payload.model)
   } catch (err) {
     if (!pollAborted) {
       const parsed = err.parsed || parseErrorPayload(err.data, err.status)
@@ -1490,6 +1502,7 @@ watch(isFast, onModelChange)
 }
 
 .alert-link {
+  margin-left: 8px;
   color: var(--el-color-primary);
   text-decoration: none;
   font-weight: 500;
